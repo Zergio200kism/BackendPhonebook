@@ -118,7 +118,18 @@ app.post('/api/phonebook',(request,response)=>{
     }
 
 })
+app.put(`/api/phonebook/:id`,(request,response)=>{
+    const body=request.body
+    console.log(body)
+    const id = request.params.id
+    console.log("id",id)
+    const index = phonebook.findIndex((person)=>person.id==id)
+    console.log(index)
 
+    phonebook[index] = body
+    console.log("nuevo",index)
+    response.json(phonebook)
+})
 app.use(unknownEndpoint)
 const PORT= process.env.PORT || 3001
 app.listen(PORT,()=>{console.log("Escuchando peticiones...")})

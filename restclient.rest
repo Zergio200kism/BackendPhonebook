@@ -9,3 +9,11 @@ Content-type: application/json
     "name":"Sergio",
     "number":"123"
 }
+
+POST http://localhost:3001/api/phonebook/5
+Content-type: application/json
+
+{
+    "name":"Sergio",
+    "number":"12345"
+}
