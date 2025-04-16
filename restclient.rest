@@ -1,0 +1,11 @@
+DELETE http://localhost:3001/api/phonebook/3
+
+###
+
+POST http://localhost:3001/api/phonebook
+Content-type: application/json
+
+{
+    "name":"Sergio",
+    "number":"123"
+}
