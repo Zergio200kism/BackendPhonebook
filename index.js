@@ -16,13 +16,13 @@ const requestLogger = (request,response,next) =>{
     console.log('---')
     next()   
 }
-app.use(requestLogger)
+
 
 const unknownEndpoint= (request,response)=>{
     response.status(404).send({error:'unknown Endpoint'})
 }
 app.use(express.json())
-
+app.use(requestLogger)
 const morgan=require('morgan')
 morgan.token('body', (req) => {
     return req.method === 'POST' ? JSON.stringify(req.body) : ''
@@ -81,21 +81,32 @@ app.get('/api/phonebook/:id',(request,response)=>{
     // }
 })
 
-app.delete('/api/phonebook/:id',async (request,response)=>{
-    const id=request.params.id
 
-    try {
-      const result = await Person.findByIdAndDelete(id);
-      console.log(id,result)  
-      if (result) {
-        response.json({exito:"Elemento eliminado con exito"}); // ✅ Eliminado con éxito, sin contenido
-      } else {
-        response.status(404).send({ error: 'Note not found' }); // ❌ No se encontró el documento
-      }
-    } catch (error) {
-      response.status(400).send({ error: 'Malformatted id' }); // ⚠️ ID inválido
-    }
-})
+// PRIMERA FORMA DE BORRAR UN REGISTRO,HECHO POR FULLSTACKOPEN
+app.delete('/api/phonebook/:id', (request, response, next) => {
+    Person.findByIdAndDelete(request.params.id)
+      .then(result => {
+        response.status(204).end()
+      })
+      .catch(error => next(error))
+ })
+
+// SEGUNDA FORMA DE BORRAR UN REGISTRO,HECHO POR CHATGPT
+// app.delete('/api/phonebook/:id',async (request,response)=>{
+//     const id=request.params.id
+
+//     try {
+//       const result = await Person.findByIdAndDelete(id);
+//       console.log(id,result)  
+//       if (result) {
+//         response.json({exito:"Elemento eliminado con exito"}); // ✅ Eliminado con éxito, sin contenido
+//       } else {
+//         response.status(404).send({ error: 'Note not found' }); // ❌ No se encontró el documento
+//       }
+//     } catch (error) {
+//       response.status(400).send({ error: 'Malformatted id' }); // ⚠️ ID inválido
+//     }
+// })
 
 app.post('/api/phonebook',(request,response)=>{
     const body=request.body
@@ -113,34 +124,69 @@ app.post('/api/phonebook',(request,response)=>{
         response.json(savedPerson)
       })
 })
-app.put(`/api/phonebook/:id`,async(request,response)=>{
-    const id = request.params.id;
-    const body = request.body;
-    console.log(body)
-    try {
-      const updatedPerson = await Person.findByIdAndUpdate(
-        id,
-        {
-          name: body.name,
-          number: body.number,
-        },
-        {
-          new: true,            // <- Retorna el documento ya actualizado
-          runValidators: true,  // <- Ejecuta validaciones definidas en el esquema
-          context: 'query'      // <- Necesario para algunas validaciones
-        }
-      );
+
+//Primera forma de actualizar un registro,hecha por fullstackopen
+app.put('/api/phonebook/:id', (request, response, next) => {
+    const { name, number } = request.body
   
-      if (updatedPerson) {
-        response.json(updatedPerson);
-      } else {
-        response.status(404).send({ error: 'Person not found' });
-      }
-    } catch (error) {
-      console.error(error);
-      response.status(400).send({ error: 'Malformatted ID or validation error' });
-    }
-})
+    Person.findById(request.params.id)
+      .then(person => {
+        if (!person) {
+          return response.status(404).end()
+        }
+  
+        person.name = name
+        person.number = number
+  
+        return person.save().then((updatedPerson) => {
+          response.json(updatedPerson)
+        })
+      })
+      .catch(error => next(error))
+  })
+//Segunda forma de actualizar un registro, hecha por chatgpt
+// app.put(`/api/phonebook/:id`,async(request,response)=>{
+//     const id = request.params.id;
+//     const body = request.body;
+//     console.log(body)
+//     try {
+//       const updatedPerson = await Person.findByIdAndUpdate(
+//         id,
+//         {
+//           name: body.name,
+//           number: body.number,
+//         },
+//         {
+//           new: true,            // <- Retorna el documento ya actualizado
+//           runValidators: true,  // <- Ejecuta validaciones definidas en el esquema
+//           context: 'query'      // <- Necesario para algunas validaciones
+//         }
+//       );
+  
+//       if (updatedPerson) {
+//         response.json(updatedPerson);
+//       } else {
+//         response.status(404).send({ error: 'Person not found' });
+//       }
+//     } catch (error) {
+//       console.error(error);
+//       response.status(400).send({ error: 'Malformatted ID or validation error' });
+//     }
+// })
 app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+  
+    if (error.name === 'CastError') {
+      return response.status(400).send({ error: 'malformatted id' })
+    } 
+  
+    next(error)
+  }
+  
+ // this has to be the last loaded middleware, also all the routes should be registered before this!
+app.use(errorHandler)
+
 const PORT= process.env.PORT || 3001
 app.listen(PORT,()=>{console.log("Escuchando peticiones...")})
